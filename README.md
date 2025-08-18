@@ -17,3 +17,7 @@ Requirements for the project
     ondisk
     cloudebase
 
+----------------------------------------------------
+Commad to crate this project as a package
+
+pip install -e .
