@@ -8,4 +8,5 @@ langchain_community
 pypdf
 faiss-cpu
 pymupdf
+structlog
 -e .
