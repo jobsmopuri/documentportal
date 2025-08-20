@@ -26,3 +26,4 @@ if __name__ == "__main__":
     logger = CustomLogger()
     logger = logger.get_logger(__file__)
     logger.info("Custo logger initated..")
+
