@@ -6,7 +6,7 @@ from exception.custom_exception import DocuementPortalException
 from models.models import *
 from langchain_core.output_parsers import JsonOutputParser
 from langchain.output_parsers import  OutputFixingParser
-from prompt.prompt_library import *
+from prompt.prompt_library import PROMPT_REGISTRY
 
 class DocumentAnalizer:
     """
@@ -22,7 +22,7 @@ class DocumentAnalizer:
             self.parser = JsonOutputParser(pydentic_object = MetaData)
             self.fixing_parser = OutputFixingParser.from_llm(parser=self.parser, llm=self.llm)
             #prompts
-            self.prompt = prompt
+            self.prompt = PROMPT_REGISTRY["document_analysis"]
 
             self.log.info("DocumentAlalizer instatiated successfully")
 
@@ -48,7 +48,7 @@ class DocumentAnalizer:
             self.log.error("Metadata Analysis Failed",error=str(ex))
             raise DocuementPortalException("Metadata Extraction Failed") from ex
         
-        
+
     def analyze_metadata(self, document_path):
         try:
             model = self.model_loader.load_model()
