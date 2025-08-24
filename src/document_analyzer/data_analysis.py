@@ -29,6 +29,26 @@ class DocumentAnalizer:
         except Exception as ex:
             self.log.error(f"Error Initaiated from DocumentAnalizer",ex)
             raise DocuementPortalException("Error in DocumentAnalizer initalization",sys)
+        
+    def analyze_document(self,document_text:str) -> dict:
+        """
+            Analize a document's text and extract structured metadata & summary
+        """
+        try:
+            chain = self.prompt | self.llm | self.fixing_parser
+            self.log.info("MetaData chain is intialized ")
+
+            response = chain.invoke({
+                "format_instructions": self.parser.get_format_instructions(),
+                "document_text": document_text
+            })
+            self.log.info("Metadata Extraction successful",keys=list(response.keys()))
+            return response
+        except Exception as ex:
+            self.log.error("Metadata Analysis Failed",error=str(ex))
+            raise DocuementPortalException("Metadata Extraction Failed") from ex
+        
+        
     def analyze_metadata(self, document_path):
         try:
             model = self.model_loader.load_model()
