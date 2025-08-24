@@ -62,6 +62,7 @@ class ModelLoader:
         log.info("Loading LLM ",provider = provider, model_name=model_name,temparature = temparature,max_token=max_token)
 
         if provider == "google":
+            log.info("Inside Google Provider")
             llm = ChatGoogleGenerativeAI(
                 model = model_name,
                 temparature = temparature,
@@ -69,7 +70,9 @@ class ModelLoader:
             )
             return llm
         elif provider == "groq":
-            llm = ChatGroq(
+            log.info("Inside groq Provider")
+
+            llm = ChatGroq( 
                 model = model_name,
                 api_key = self.api_keys["GROQ_API_KEY"]
             )
@@ -79,13 +82,13 @@ class ModelLoader:
             raise ValueError(f"Unsupported LLM Provider: {provider}")
 
 
-# if __name__ == "__main__":
-#     loader = ModelLoader()
-#     embeddings = loader.load_embeddings()
-#     print(f"Embedding model Loaded : {embeddings}")
+if __name__ == "__main__":
+    loader = ModelLoader()
+    embeddings = loader.load_embeddings()
+    print(f"Embedding model Loaded : {embeddings}")
 
-#     llm = loader.load_llm()
-#     print(f"LLM loaded : {llm}")
+    llm = loader.load_llm()
+    print(f"LLM loaded : {llm}")
 
-#     result = llm.invoke("Hello, How are you ?")
-#     print(f"LLM Result : {result.content}")
+    result = llm.invoke("Hello, How are you ?")
+    print(f"LLM Result : {result.content}")
