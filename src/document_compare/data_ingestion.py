@@ -5,7 +5,7 @@ from logger.custom_logger import CustomLogger
 from exception.custom_exception import DocuementPortalException
 
 class DocumentIngestion:
-    def __init__(self,base_dir):
+    def __init__(self,base_dir:str = "data\\document_compare"):
         self.log = CustomLogger().get_logger(__name__)
         self.base_dir = Path(base_dir)
         self.base_dir.mkdir(parents=True, exist_ok=True)
@@ -31,8 +31,8 @@ class DocumentIngestion:
         try:
             self.delete_existing_file()
             self.log.info("Existing file deleted successfully..")
-            ref_path = self.base_dir/reference_file.name
-            actual_path = self.base_dir/actual_file.name
+            ref_path = self.base_dir//reference_file.name
+            actual_path = self.base_dir//actual_file.name
             if reference_file.name.endswith(".pdf") or not actual_file.name.endswith(".pdf"):
                 raise ValueError("Only PDF files are allowed")
             
@@ -68,4 +68,23 @@ class DocumentIngestion:
         except Exception as ex:
             self.log.error(f"Error reading PDF",ex)
             raise DocuementPortalException("An error occured while reading the pdf",sys)
+        
+    def combine_documents(self,) ->str:
+        try:
+            content_dict = []
+            doc_parts = []
+
+            for filename in sorted(self.base_dir.iterdir()):
+                if filename.is_file() and filename.suffix == ".pdf":
+                    content_dict[filename.name] = self.read_pdf(filename)
+            for filename, content in content_dict.items():
+                doc_parts.append(f"Document: {filename} \n {content}")
+
+            combined_text = "\n\n".join(doc_parts)
+            self.log.info("Documents Combined",count=len(doc_parts))
+            return combined_text
+        except Exception as ex:
+            self.log.error(f"Error combine documents: {ex}")
+            raise DocuementPortalException("An error occured while combining documents.",sys)
+        
 
