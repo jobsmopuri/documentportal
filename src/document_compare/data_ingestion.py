@@ -29,13 +29,13 @@ class DocumentIngestion:
         Saves uploaded files to a specific directory
         """
         try:
+            self.log.info(f"Inside save upload file.")
             self.delete_existing_file()
             self.log.info("Existing file deleted successfully..")
-            ref_path = self.base_dir//reference_file.name
-            actual_path = self.base_dir//actual_file.name
-            if reference_file.name.endswith(".pdf") or not actual_file.name.endswith(".pdf"):
+            ref_path = self.base_dir/ reference_file.name
+            actual_path = self.base_dir/ actual_file.name
+            if not reference_file.name.endswith(".pdf") or not actual_file.name.endswith(".pdf"):
                 raise ValueError("Only PDF files are allowed")
-            
             with open(ref_path,"wb") as f:
                 f.write(reference_file.getbuffer())
             with open(actual_path,"wb") as f:
@@ -58,21 +58,21 @@ class DocumentIngestion:
                 all_text = []
                 for page_num in range(doc.page_count):
                     page = doc.load_page(page_num)
-                    text = page.get_text()
+                    text = page.get_text() #type:ignore
 
                     if text.strip():
                         all_text.append(f"\n --- Page {page_num+1} ---\n {text}")
-
-                self.log("PDF read Successfully", file=str(pdf_path),pages= len(all_text))
+                self.log.info("PDF read Successfully", file=str(pdf_path),pages= len(all_text))
                 return "\n".join(all_text)
         except Exception as ex:
             self.log.error(f"Error reading PDF",ex)
             raise DocuementPortalException("An error occured while reading the pdf",sys)
         
-    def combine_documents(self,) ->str:
+    def combine_documents(self) ->str:
         try:
-            content_dict = []
+            content_dict = {}
             doc_parts = []
+            self.log.info("Inside Combined_documents method")
 
             for filename in sorted(self.base_dir.iterdir()):
                 if filename.is_file() and filename.suffix == ".pdf":

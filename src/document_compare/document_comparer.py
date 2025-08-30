@@ -37,7 +37,7 @@ class DocumentComparatorLLM:
         except Exception as ex:
             self.log.error(f"Error occured in compare_document: {ex}")
             raise DocuementPortalException("An error occured while comparing the documents",sys)
-    def _format_response(self,response_parsed:list[dict]) -> pd.DataFrame:
+    def _format_response(self,response_parsed:list[dict]) -> pd.DataFrame: #type: ignore
         """ 
         Formats the response from the LLM into a strctured format
         """
