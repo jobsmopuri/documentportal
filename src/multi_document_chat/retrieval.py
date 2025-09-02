@@ -86,8 +86,8 @@ class ConversationalRAG:
                 | self.llm
                 | StrOutputParser()
             )
-            
-            retrieve_docs = self.retriever | self._format_docs
+
+            retrieve_docs = question_rewriter | self.retriever | self._format_docs
 
             self.chain = (
                 {
@@ -101,6 +101,6 @@ class ConversationalRAG:
 
             )
 
-            
+            self.log.info("LCEL chain build successfully.",session_id = self.session_id)
         except Exception as ex:
             self.log.error("")
