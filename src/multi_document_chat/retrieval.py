@@ -8,6 +8,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
 from langchain_community.vectorstores import FAISS
+from langchain_core.messages import BaseMessage
 
 from utils.model_loader import ModelLoader
 from exception.custom_exception import DocuementPortalException
@@ -56,9 +57,29 @@ class ConversationalRAG:
             self.log.error("Failed to load the retriver from FAISS",error=str(ex))
             raise DocuementPortalException("Failed to load retriever from FAISS",sys)
 
-    def invoke(self):
+    def invoke(self,user_input:str, chat_history: Optional[List[BaseMessage]]=None) -> str:
+        """
+            Args:
+                User_input (str) : _description.
+                chat_history (Optional[List[BaseMessage]],Optional): _description_. Default to None
+        """
         try:
-            pass
+            chat_history = chat_history or []
+            payload = {"input":user_input, "chat_history":chat_history}
+
+            answer = self.chain.invoke(payload)
+            if not answer:
+                self.log.warning("No answer generated",user_input=user_input, session_id = self.session_id)
+                return "No answer generated"
+
+            self.log.info(
+                "Chain invoked successfully",
+                session_id = self.session_id,
+                user_input = user_input,
+                answer_preview = answer[:150]
+            )
+            return answer
+            
         except Exception as ex:
             self.log.error("Failed to invoke ConvarsationalRAG",error= str(ex))
             raise DocuementPortalException("Invocation error in ConvarsationalRAG",sys)
@@ -100,7 +121,7 @@ class ConversationalRAG:
                 |StrOutputParser()
 
             )
-
             self.log.info("LCEL chain build successfully.",session_id = self.session_id)
         except Exception as ex:
-            self.log.error("")
+            self.log.error("Failed to build the lcel Chain",error=str(ex))
+            raise DocuementPortalException("Failed to build the LCEL chain",sys)
