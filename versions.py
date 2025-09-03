@@ -15,7 +15,11 @@ packages =[
     "streamlit",
     "pytest",
     "langchain-core",
-    "docx2txt"
+    "docx2txt",
+    "fastapi",
+    "fitz",
+    "python-multipart",
+    "uvicorn"
 ]
 for pkg in packages:
     try:

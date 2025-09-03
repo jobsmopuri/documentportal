@@ -21,3 +21,6 @@ Requirements for the project
 Commad to crate this project as a package
 
 pip install -e .
+
+
+uvcorn main:app --reload

@@ -56,7 +56,7 @@ class DocumentCompartor:
         pass
     def combine_documents(self):
         pass
-    def clean_old_session(self):
+    def clean_old_sessions(self):
         pass
 
 class ChatIngestor:
@@ -68,3 +68,4 @@ class ChatIngestor:
         pass
     def build_retriver(self):
         pass
+    
