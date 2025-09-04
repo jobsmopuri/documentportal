@@ -16,6 +16,8 @@ from src.document_chat.retriever import ConversationalRAG
 import os
 
 app = FastAPI(title="Document Portal API", version="0.1")
+FAISS_BASE = os.getenv("FAISS_BASE","faiss_index")
+UPLOAD_BASE = os.getenv("UPLOAD_BASE","data")
 
 app.add_middleware(
     CORSMiddleware,
@@ -134,7 +136,11 @@ def _read_pdf_via_handler(handler: DocHandler, path:str) -> str:
         Helper function to read PDF using DocHandler
     """
     try:
-        pass
+        if hasattr(handler,"read_pdf"):
+            return handler.read_pdf(path)
+        if hasattr(handler,"read_"):
+            return handler.read_pdf(path)
+        return RuntimeError("DocHandler Has neither read_pdf nor read_ method.")
     except Exception as ex:
         raise HTTPException(status_code=500, detail=f"Error reading PDF: {str(ex)}")
     
