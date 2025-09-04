@@ -74,25 +74,84 @@ class FaissManager:
         return len(new_docs)
     
 
-    def load_or_create(self):
+    def load_or_create(self,texts:Optional[List[str]] = None, metadata = Optional[List[str]] = None):
         if self._exists():
             self.vs = FAISS.load_local(
                 str(self.index_dir),
                 embeddings= self.emb,
                 allow_dangerous_deserialization=True
             )
-
+            return self.vs
+        
+        if not texts:
+            raise DocuementPortalException("No existing FAISS index and no data to create one",sys)
+        self.vs = FAISS.from_texts(texts=texts, embedding=self.emb, metadatas = metadata or [])
+        self.vs.save_local(str(self.index_dir))
         return self.vs
 
 class ChatIngestor:
-    def __init__(self):
-        pass
-    def _resolve_dir(self):
-        pass
-    def _split(self):
-        pass
-    def build_retriver(self):
-        pass
+    def __init__(self,temp_base: str= "data/upload",faiss_base: str = "faiss_index",use_session_dirs: bool = True,session_id: Optional[str] = None):
+        try:
+            self.log = CustomLogger().get_logger(__name__)
+            self.model_loader = ModelLoader()
+            self.session_id = self.session_id or _session_id()
+            self.use_session = use_session_dirs
+            self.temp_base = Path(temp_base)
+            self.temp_base.mkdir(parents=True, exist_ok=True)
+            self.faiss_base = Path(faiss_base)
+            self.faiss_base.mkdir(parents=True, exist_ok=True)
+
+            self.temp_dir = self._resolve_dir(self.temp_base)
+            self.faiss_dir = self._resolve_dir(self.faiss_base)
+
+            self.log.info(
+                "ChatIngestor initalized",
+                session_id= self.session_id,
+                temp_dir = str(self.temp_dir),
+                faiss_dir = str(self.faiss_dir),
+                sessionized = self.use_session
+            )
+        except Exception as ex:
+            self.log.info("Failed to initialize ChatIngestor",error=str(ex))
+            raise DocuementPortalException("Initalization error in ChatIngestor",ex) from ex
+    def _resolve_dir(self,base:Path):
+        if self.use_session:
+            d = base / self.session_id
+            d.mkdir(parents=True, exist_ok=True)
+            return d
+        return base
+    def _split(self, docs: List[Document],chunk_size = 1000, chunk_overlap=200)-> List[Document]:
+        splitter = RecursiveCharacterTextSplitter(chunk_size-chunk_size, chunk_overlap=chunk_overlap)
+        chunks = splitter.split_documents(docs)
+        self.log.info("Documents Split", chunks=len(chunks), chunk_size = chunk_size, chunk_overlap = chunk_overlap)
+        return chunks
+
+    def base_retriver(self, uploded_files: Iterable, *, chunk_size:int = 1000, chunk_overlap:int = 200, k:int = 5):
+        try:
+            paths = save_uploded_files(uploded_files,self.temp_dir)
+            docs = load_documents(paths)
+            if not docs:
+                raise ValueError("No Valid document loaded")
+            chunks = self._split(docs,chunk_size=chunk_size, chunk_overlap=chunk_overlap)
+            fm = FaissManager(self.faiss_dir,self.model_loader)
+
+            texts = [c.page_content for c in chunks]
+            metas = [c.metadata for c in chunks]
+            try:
+                vs = fm.load_or_create(texts=texts, metadata = metas)
+            except Exception:
+                vs = fm.load_or_create(texts=texts, metadata = metas)
+            
+            added = vs.add_documents(chunks)
+            self.log.info("FAISS index updated", added = added , index=str(self.faiss_dir))
+            return vs.as_retriever(search_type="similarity",search_kwargs={"k":k})
+
+        except Exception as ex:
+            self.log.info("Failed to build retriver",error=str(ex))
+            raise DocuementPortalException("Failed to build retriever",ex)from ex
+    
+        
+    
 
 
 class DocHandler:
