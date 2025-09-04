@@ -1,0 +1,127 @@
+import sys
+import os
+from typing import List,Optional
+from dotenv import load_dotenv
+from operator  import itemgetter
+
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.runnables import RunnablePassthrough
+from langchain_community.vectorstores import FAISS
+from langchain_core.messages import BaseMessage
+
+from utils.model_loader import ModelLoader
+from exception.custom_exception import DocuementPortalException
+from logger.custom_logger import CustomLogger
+from prompt.prompt_library import PROMPT_REGISTRY
+from models.models import PromptType
+
+class ConversationalRAG:
+    def __init__(self,session_id:str, retriever:None):
+        try:
+            self.log = CustomLogger().get_logger(__name__)
+            self.session_id = session_id
+            self.llm = self._load_llm()
+            self.contextualize_prompt: ChatPromptTemplate = PROMPT_REGISTRY[PromptType.CONTEXTUALIZE_QUESTION.value]
+            self.qa_promt: ChatPromptTemplate = PROMPT_REGISTRY[PromptType.CONTEXT_QA.value]
+            if retriever is None:
+                raise ValueError("Retriever is cannot not be none")
+            self.retriever = retriever
+
+            self._build_lcel_chain()
+            self.log.info("COnversational RAG has been initalized..")
+
+        except Exception as ex:
+            self.log.error("Failed to initalize Conversational RAG",error = str(ex))
+            raise DocuementPortalException("Initalization Error in ConersationalRAG",sys)
+
+    def load_retriever_from_faiss(self,index_path: str):
+        """
+            Loads a FAISS vectorstore from disk and convert to retriever
+        """
+        try:
+            embeddings = ModelLoader().load_embeddings()
+            if not os.path.isdir(index_path):
+                raise FileNotFoundError(f"FAISS index directory not found: {index_path}")
+            vectorstore = FAISS.load_local(
+                index_path,
+                embeddings,
+                allow_dangerous_deserialization=True
+            )
+            self.retriever = vectorstore.as_retriever(search_type ="similarity",search_kwargs={"k":5})
+            self.log.info("FAISS retriever loaded successfully",index_path=index_path, session_id = self.session_id)
+
+            #self._build_lcel_chain()
+            return self.retriever            
+        except Exception as ex:
+            self.log.error("Failed to load the retriver from FAISS",error=str(ex))
+            raise DocuementPortalException("Failed to load retriever from FAISS",sys)
+
+    def invoke(self,user_input:str, chat_history: Optional[List[BaseMessage]]=None) -> str:
+        """
+            Args:
+                User_input (str) : _description.
+                chat_history (Optional[List[BaseMessage]],Optional): _description_. Default to None
+        """
+        try:
+            chat_history = chat_history or []
+            payload = {"input":user_input, "chat_history":chat_history}
+
+            answer = self.chain.invoke(payload)
+            if not answer:
+                self.log.warning("No answer generated",user_input=user_input, session_id = self.session_id)
+                return "No answer generated"
+
+            self.log.info(
+                "Chain invoked successfully",
+                session_id = self.session_id,
+                user_input = user_input,
+                answer_preview = answer[:150]
+            )
+            return answer
+            
+        except Exception as ex:
+            self.log.error("Failed to invoke ConvarsationalRAG",error= str(ex))
+            raise DocuementPortalException("Invocation error in ConvarsationalRAG",sys)
+
+    def _load_llm(self):
+        try:
+            llm = ModelLoader().load_llm()
+            if not llm:
+                raise ValueError("LLM Vould not be loaded")
+            self.log.info("LLM Loaded successfully",session_id = self.session_id)
+            return llm
+        except Exception as ex:
+            self.log.error("Failed to Load the LLM",error=str(ex))
+            raise DocuementPortalException("Failed to load the LLM",sys)
+    
+    @staticmethod
+    def _format_docs(docs):
+        return "\n\n".join(d.page_content for d in docs)
+
+    def _build_lcel_chain(self):
+        try:
+            question_rewriter = (
+                {"input":itemgetter("input"), "chat_history":itemgetter("chat_history")}
+                | self.contextualize_prompt
+                | self.llm
+                | StrOutputParser()
+            )
+
+            retrieve_docs = question_rewriter | self.retriever | self._format_docs
+
+            self.chain = (
+                {
+                    "context":retrieve_docs,
+                    "input":itemgetter("input"),
+                    "chat_history":itemgetter("chat_history"),
+                } 
+                |self.qa_promt
+                |self.llm
+                |StrOutputParser()
+
+            )
+            self.log.info("LCEL chain build successfully.",session_id = self.session_id)
+        except Exception as ex:
+            self.log.error("Failed to build the lcel Chain",error=str(ex))
+            raise DocuementPortalException("Failed to build the LCEL chain",sys)
